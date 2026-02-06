@@ -27,7 +27,7 @@ function getCurrentUserName() {
 function getUserAssessments(userName) {
     const key = getStorageKey(userName);
     if (!key) return [];
-    
+
     try {
         const data = localStorage.getItem(key);
         return data ? JSON.parse(data) : [];
@@ -43,7 +43,7 @@ function getUserAssessments(userName) {
 function saveUserAssessments(userName, assessments) {
     const key = getStorageKey(userName);
     if (!key) return false;
-    
+
     try {
         localStorage.setItem(key, JSON.stringify(assessments));
         return true;
@@ -63,46 +63,13 @@ let currentAssessment = {
 };
 let currentLoadedAssessmentId = null; // 現在読み込んでいる評価ID
 
-// 評価項目のデフォルトデータ
-const defaultItems = [
-    // 就労意欲・意欲
-    { category: "就労意欲・意欲", name: "就労意欲", description: "働きたいという意欲や動機の強さ" },
-    { category: "就労意欲・意欲", name: "学習意欲", description: "新しいスキルや知識を学ぶ意欲" },
-    { category: "就労意欲・意欲", name: "目標設定", description: "明確な就労目標を持っているか" },
-    
-    // 就労能力・技能
-    { category: "就労能力・技能", name: "作業遂行能力", description: "指示された作業を完遂できる能力" },
-    { category: "就労能力・技能", name: "作業速度", description: "作業を効率的に行う能力" },
-    { category: "就労能力・技能", name: "正確性", description: "作業を正確に行う能力" },
-    { category: "就労能力・技能", name: "持続力", description: "長時間作業を継続できる能力" },
-    
-    // 対人関係・コミュニケーション
-    { category: "対人関係・コミュニケーション", name: "コミュニケーション能力", description: "他者と円滑にコミュニケーションを取る能力" },
-    { category: "対人関係・コミュニケーション", name: "協調性", description: "チームで協力して作業する能力" },
-    { category: "対人関係・コミュニケーション", name: "報告・連絡・相談", description: "適切に報告・連絡・相談ができるか" },
-    
-    // 身体面・健康
-    { category: "身体面・健康", name: "体力", description: "身体的な作業に耐えられる体力" },
-    { category: "身体面・健康", name: "健康管理", description: "自己の健康状態を管理する能力" },
-    { category: "身体面・健康", name: "通勤能力", description: "職場まで安定して通勤できる能力" },
-    
-    // 環境的要因
-    { category: "環境的要因", name: "家族の理解", description: "家族からの就労への理解と支援" },
-    { category: "環境的要因", name: "生活リズム", description: "規則正しい生活リズムの確立" },
-    
-    // 自己理解・自己管理
-    { category: "自己理解・自己管理", name: "自己理解", description: "自分の強みや課題を理解しているか" },
-    { category: "自己理解・自己管理", name: "ストレス管理", description: "ストレスに適切に対処できる能力" },
-    { category: "自己理解・自己管理", name: "感情コントロール", description: "感情を適切にコントロールできる能力" },
-    
-    // 職業知識・準備
-    { category: "職業知識・準備", name: "職業理解", description: "希望する職業についての理解度" },
-    { category: "職業知識・準備", name: "ビジネスマナー", description: "基本的なビジネスマナーの習得度" },
-    
-    // 適応性・柔軟性
-    { category: "適応性・柔軟性", name: "環境適応力", description: "新しい環境に適応する能力" },
-    { category: "適応性・柔軟性", name: "変化への対応", description: "予期せぬ変化に柔軟に対応できるか" }
-];
+// ===== 評価項目マスタ（全員共通） =====
+const ITEMS_URL = "./items.json";                 // GitHubに置くマスタ（全員共通）
+const ITEMS_CACHE_KEY = "assessmentItems";        // 既存キーをキャッシュとして流用（互換）
+const ITEMS_SOURCE_KEY = "assessmentItemsSource"; // どこから読んだか（任意）
+
+// ※安全版の方針：items.json が読めない / キャッシュが空 の場合は「空」で止める（defaultItemsに落ちない）
+// これにより「全員同じ項目」を崩さない
 
 // 評価基準データ
 const scoreCriteria = {
@@ -134,72 +101,93 @@ const scoreCriteria = {
 };
 
 // 初期化処理
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function () {
     console.log('アプリケーション初期化開始');
-    
+
     // 今日の日付をデフォルトで設定
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('entryDate').value = today;
-    
-    // 評価項目をローカルストレージから読み込み、なければデフォルトを使用
-    loadAssessmentItems();
-    
+
+    // 評価項目を読み込み（items.json優先 → 失敗時のみlocalStorage）
+    await loadAssessmentItems();
+
     // 評価基準を表示
     renderScoreCriteria();
-    
+
     // 評価項目を表示
     renderAssessmentItems();
-    
+
     // 項目管理リストを表示
     renderItemManagementList();
-    
+
     // 過去の評価結果を読み込み
     loadPastAssessments();
-    
+
     // イベントリスナーを設定
     setupEventListeners();
-    
+
     console.log('アプリケーション初期化完了');
 });
 
-// 評価項目の読み込み
-function loadAssessmentItems() {
-    const stored = localStorage.getItem('assessmentItems');
-    
-    // localStorageに評価項目が存在する場合
-    if (stored) {
-        const parsed = JSON.parse(stored);
-        
-        // 空配列の場合は初期データを投入
-        if (Array.isArray(parsed) && parsed.length === 0) {
-            console.log('評価項目が空のため、初期データを投入します');
-            assessmentItems = [...defaultItems];
-            saveAssessmentItems();
-        } else {
-            assessmentItems = parsed;
-            console.log(`評価項目を読み込みました（${assessmentItems.length}項目）`);
+// 評価項目の読み込み（安全版：items.json優先 → キャッシュ → それでも無ければ空で停止）
+async function loadAssessmentItems() {
+    // 1) まず items.json（全員共通マスタ）を読みにいく
+    try {
+        const res = await fetch(ITEMS_URL, { cache: "no-store" });
+        if (!res.ok) throw new Error(`items.json fetch failed: ${res.status}`);
+
+        const data = await res.json();
+        const items = Array.isArray(data) ? data : (data.items || []);
+
+        if (!Array.isArray(items) || items.length === 0) {
+            throw new Error("items.json is empty or invalid");
         }
-    } else {
-        // localStorageに評価項目が存在しない場合は初期データを投入
-        console.log('初回起動: 初期評価項目データを投入します');
-        assessmentItems = [...defaultItems];
-        saveAssessmentItems();
-        console.log(`初期データを保存しました（${assessmentItems.length}項目）`);
+
+        assessmentItems = items;
+        saveAssessmentItems(); // localStorageへキャッシュ（保険）
+        localStorage.setItem(ITEMS_SOURCE_KEY, "master_json");
+
+        console.log(`評価項目を items.json から読み込みました（${assessmentItems.length}項目）`);
+        return;
+    } catch (e) {
+        console.warn("items.json の読み込みに失敗。localStorage を使用します:", e);
     }
+
+    // 2) items.json が読めない時だけ localStorage を使う（キャッシュ）
+    const stored = localStorage.getItem(ITEMS_CACHE_KEY);
+    if (stored) {
+        try {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                assessmentItems = parsed;
+                localStorage.setItem(ITEMS_SOURCE_KEY, "local_cache");
+                console.log(`評価項目を localStorage から読み込みました（${assessmentItems.length}項目）`);
+                return;
+            }
+        } catch (e) {
+            console.error("localStorage評価項目の解析エラー:", e);
+        }
+    }
+
+    // 3) 最後：空で止める（defaultItemsに落ちない＝全員同じ運用を崩さない）
+    assessmentItems = [];
+    saveAssessmentItems();
+    localStorage.setItem(ITEMS_SOURCE_KEY, "no_items");
+    console.warn("評価項目が取得できません（items.jsonが読めない、かつローカルキャッシュも空）");
 }
 
-// 評価項目の保存
+// 評価項目の保存（localStorageキャッシュ）
 function saveAssessmentItems() {
-    localStorage.setItem('assessmentItems', JSON.stringify(assessmentItems));
+    localStorage.setItem(ITEMS_CACHE_KEY, JSON.stringify(assessmentItems));
 }
 
 // 評価基準の表示
 function renderScoreCriteria() {
     const criteriaContainer = document.getElementById('scoreCriteria');
-    
+
     let html = '<div class="table-responsive"><table class="table table-bordered criteria-table">';
     html += '<thead><tr><th>スコア</th><th>評価</th><th>説明</th></tr></thead><tbody>';
-    
+
     for (let score = 5; score >= 1; score--) {
         const criteria = scoreCriteria[score];
         html += `<tr>
@@ -208,7 +196,7 @@ function renderScoreCriteria() {
             <td>${criteria.description}</td>
         </tr>`;
     }
-    
+
     html += '</tbody></table></div>';
     criteriaContainer.innerHTML = html;
 }
@@ -217,7 +205,7 @@ function renderScoreCriteria() {
 function toggleCriteriaPanel() {
     const panel = document.getElementById('criteriaPanel');
     const button = document.getElementById('toggleCriteria');
-    
+
     if (panel.style.display === 'none') {
         panel.style.display = 'block';
         button.innerHTML = '<i class="bi bi-info-circle me-1"></i>評価基準を非表示';
@@ -227,88 +215,71 @@ function toggleCriteriaPanel() {
     }
 }
 
-// 評価項目の表示
+// 評価項目の表示（※削除ボタンは表示しない：全員同じ項目で評価するため）
 function renderAssessmentItems() {
     const container = document.getElementById('assessmentItems');
-    
-    if (assessmentItems.length === 0) {
-        container.innerHTML = '<div class="alert alert-info">評価項目がありません。「項目を追加」から項目を登録してください。</div>';
+
+    if (!assessmentItems || assessmentItems.length === 0) {
+        container.innerHTML = `
+            <div class="alert alert-warning">
+                評価項目（items.json）が読み込めませんでした。<br>
+                管理者が <code>items.json</code> をリポジトリ直下に配置しているか確認してください。<br>
+                （またはブラウザのキャッシュを更新：<strong>Ctrl + F5</strong>）
+            </div>`;
         return;
     }
-    
+
     // カテゴリごとにグループ化
     const groupedItems = {};
     assessmentItems.forEach((item, index) => {
-        if (!groupedItems[item.category]) {
-            groupedItems[item.category] = [];
-        }
-        groupedItems[item.category].push({ ...item, index });
+        const cat = item.category || '未分類';
+        if (!groupedItems[cat]) groupedItems[cat] = [];
+        groupedItems[cat].push({ ...item, index });
     });
-    
+
     let html = '';
-    
+
     for (const category in groupedItems) {
         html += `<div class="category-section fade-in">
             <div class="category-title">
                 <i class="bi bi-folder me-2"></i>${category}
             </div>`;
-        
+
         groupedItems[category].forEach(item => {
             html += `<div class="assessment-item" data-index="${item.index}">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                    <div>
-                        <label class="form-label mb-1">${item.name}</label>
-                        <small class="text-muted">${item.description}</small>
-                    </div>
-                    <button class="btn btn-sm btn-outline-danger btn-delete" onclick="deleteAssessmentItem(${item.index})">
-                        <i class="bi bi-trash"></i>
-                    </button>
+                <div class="mb-2">
+                    <label class="form-label mb-1">${item.name}</label>
+                    <small class="text-muted">${item.description || ''}</small>
                 </div>
-                
+
                 <div class="score-selection mb-2">
                     ${[1, 2, 3, 4, 5].map(score => `
-                        <button class="score-btn score-${score}" 
-                                data-item="${item.index}" 
+                        <button class="score-btn score-${score}"
+                                data-item="${item.index}"
                                 data-score="${score}"
                                 onclick="selectScore(${item.index}, ${score})">
                             ${score}
                         </button>
                     `).join('')}
                 </div>
-                
+
                 <div class="mt-2">
                     <label class="form-label small">メモ・所見</label>
-                    <textarea class="memo-textarea" 
+                    <textarea class="memo-textarea"
                               data-item="${item.index}"
                               placeholder="特記事項や観察内容を記入してください"
                               onchange="saveMemo(${item.index}, this.value)"></textarea>
                 </div>
             </div>`;
         });
-        
+
         html += '</div>';
     }
-    
+
     container.innerHTML = html;
-    
+
     // 現在の評価データを復元
     restoreCurrentAssessment();
-}
-
-// スコアの選択
-function selectScore(itemIndex, score) {
-    currentAssessment.scores[itemIndex] = score;
-    
-    // ボタンの状態を更新
-    const buttons = document.querySelectorAll(`button[data-item="${itemIndex}"]`);
-    buttons.forEach(btn => {
-        btn.classList.remove('active');
-        if (parseInt(btn.dataset.score) === score) {
-            btn.classList.add('active');
-        }
-    });
-    
-    console.log(`項目 ${itemIndex} のスコアを ${score} に設定`);
 }
 
 // メモの保存
@@ -335,19 +306,11 @@ function restoreCurrentAssessment() {
     }
 }
 
-// 評価項目の削除
+// 評価項目の削除（無効化：全員同じ項目で評価するため）
 function deleteAssessmentItem(index) {
-    if (confirm('この評価項目を削除してもよろしいですか?')) {
-        assessmentItems.splice(index, 1);
-        saveAssessmentItems();
-        renderAssessmentItems();
-        renderItemManagementList();
-        
-        // 現在の評価データからも削除
-        delete currentAssessment.scores[index];
-        delete currentAssessment.memos[index];
-    }
+    alert('評価項目は共通マスタ（items.json）で管理しています。この画面では削除できません。');
 }
+
 
 // 項目管理リストの表示
 function renderItemManagementList() {
