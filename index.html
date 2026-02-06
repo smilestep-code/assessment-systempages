@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>就労選択支援サービス - 利用者アセスメント</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <style>
+        /* 緊急表示復旧用のスタイル */
+        #assessmentItems {
+            display: block !important;
+            visibility: visible !important;
+            min-height: 100px !important;
+        }
+        
+        #criteriaPanel {
+            display: none !important; /* 初期状態では非表示 */
+        }
+        
+        #criteriaPanel[style*="display: block"] {
+            display: block !important;
+        }
+        
+        .assessment-item {
+            display: block !important;
+            visibility: visible !important;
+        }
+        
+        .category-section {
+            display: block !important;
+            visibility: visible !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- ヘッダー -->
+        <header class="bg-primary text-white p-3 mb-4">
+            <div class="container">
+                <h1 class="h3 mb-0">
+                    <i class="bi bi-clipboard-data me-2"></i>
+                    就労選択支援サービス - 利用者アセスメント結果表
+                </h1>
+            </div>
+        </header>
+
+        <!-- メインコンテンツ -->
+        <main class="container">
+            <!-- 基本情報入力エリア -->
+            <section class="card mb-4">
+                <div class="card-header bg-light">
+                    <h2 class="h5 mb-0">基本情報</h2>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label for="userName" class="form-label">利用者名（イニシャル） <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="userName" placeholder="例: A.B" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="managementNumber" class="form-label">管理番号</label>
+                            <input type="text" class="form-control" id="managementNumber" placeholder="例: 2024-001">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="evaluatorName" class="form-label">評価実施者名 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="evaluatorName" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="entryDate" class="form-label">記入日 <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="entryDate" required>
+                        </div>
+                    </div>
+                    <div class="row g-3 mt-2">
+                        <div class="col-md-6">
+                            <label for="startDate" class="form-label">開始日 <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="startDate" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="endDate" class="form-label">終了日 <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="endDate" required>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 評価項目管理セクション -->
+            <section class="card mb-4">
+                <div class="card-header bg-light">
+                    <h2 class="h5 mb-3">評価項目管理</h2>
+                    <!-- タブ切り替え -->
+                    <ul class="nav nav-tabs card-header-tabs" id="itemRegistrationTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="single-tab" data-bs-toggle="tab" data-bs-target="#single-registration" type="button" role="tab">
+                                <i class="bi bi-pencil me-1"></i>単項目登録
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="bulk-tab" data-bs-toggle="tab" data-bs-target="#bulk-registration" type="button" role="tab">
+                                <i class="bi bi-files me-1"></i>一括登録（テキスト）
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body">
+                    <div class="tab-content" id="itemRegistrationTabContent">
+                        <!-- 単項目登録タブ -->
+                        <div class="tab-pane fade show active" id="single-registration" role="tabpanel">
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <label for="newCategory" class="form-label">カテゴリ</label>
+                                    <select class="form-select" id="newCategory">
+                                        <option value="">選択してください</option>
+                                        <option value="就労意欲・意欲">就労意欲・意欲</option>
+                                        <option value="就労能力・技能">就労能力・技能</option>
+                                        <option value="対人関係・コミュニケーション">対人関係・コミュニケーション</option>
+                                        <option value="身体面・健康">身体面・健康</option>
+                                        <option value="環境的要因">環境的要因</option>
+                                        <option value="自己理解・自己管理">自己理解・自己管理</option>
+                                        <option value="職業知識・準備">職業知識・準備</option>
+                                        <option value="適応性・柔軟性">適応性・柔軟性</option>
+                                        <option value="カスタム">カスタム</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="newItemName" class="form-label">項目名</label>
+                                    <input type="text" class="form-control" id="newItemName" placeholder="例: チーム協調性">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="newDescription" class="form-label">説明</label>
+                                    <input type="text" class="form-control" id="newDescription" placeholder="例: 他者と協力して作業を行う能力">
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <button type="button" class="btn btn-outline-primary" id="registerItemBtn">
+                                    <i class="bi bi-plus me-1"></i>新規項目を登録
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 一括登録タブ -->
+                        <div class="tab-pane fade" id="bulk-registration" role="tabpanel">
+                            <div class="mb-3">
+                                <label for="bulkCategory" class="form-label">カテゴリ（オプション）</label>
+                                <select class="form-select" id="bulkCategory">
+                                    <option value="">カンマ区切りで指定する場合は不要</option>
+                                    <option value="就労意欲・意欲">就労意欲・意欲</option>
+                                    <option value="就労能力・技能">就労能力・技能</option>
+                                    <option value="対人関係・コミュニケーション">対人関係・コミュニケーション</option>
+                                    <option value="身体面・健康">身体面・健康</option>
+                                    <option value="環境的要因">環境的要因</option>
+                                    <option value="自己理解・自己管理">自己理解・自己管理</option>
+                                    <option value="職業知識・準備">職業知識・準備</option>
+                                    <option value="適応性・柔軟性">適応性・柔軟性</option>
+                                    <option value="カスタム">カスタム</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="bulkItemsText" class="form-label">評価項目（1行に1項目）</label>
+                                <textarea class="form-control font-monospace" id="bulkItemsText" rows="12" 
+                                    placeholder="【形式1】カテゴリ,項目名,説明&#10;就労意欲・意欲,就労への関心,仕事に対する興味や関心の度合い&#10;就労能力・技能,質量維持,作業の質と量を一定に保つ能力&#10;&#10;【形式2】項目名｜説明（カテゴリは上で選択）&#10;チーム協調性｜他者と協力して作業を行う力&#10;指示理解｜指示を正確に理解し実行できるか&#10;&#10;※ 重複する項目は自動スキップされます"></textarea>
+                                <div class="form-text">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    <strong>形式1（推奨）:</strong> <code>カテゴリ,項目名,説明</code><br>
+                                    <strong>形式2:</strong> <code>項目名｜説明</code> または <code>項目名[TAB]説明</code><br>
+                                    例: 就労意欲・意欲,就労への関心,仕事に対する興味や関心の度合い<br>
+                                    <span class="text-muted">※ 同じカテゴリ・項目名の重複は自動的にスキップされます</span>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <button type="button" class="btn btn-primary" id="registerBulkItemsBtn">
+                                    <i class="bi bi-cloud-upload me-1"></i>一括で項目を登録
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 登録済み項目一覧 -->
+            <section class="card mb-4">
+                <div class="card-header bg-light">
+                    <h2 class="h5 mb-0">
+                        <i class="bi bi-list-ul me-2"></i>登録済み項目一覧（並び替え・削除）
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div id="itemManagementList">
+                        <!-- 項目一覧はJavaScriptで動的に生成されます -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- 評価基準表示 -->
+            <section class="card mb-4">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h2 class="h5 mb-0">評価基準</h2>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="toggleCriteria" onclick="toggleCriteriaPanel()">
+                        <i class="bi bi-info-circle me-1"></i>評価基準を表示
+                    </button>
+                </div>
+                <div class="card-body" id="criteriaPanel" style="display: none;">
+                    <div id="scoreCriteria">
+                        <!-- 評価基準はJavaScriptで動的に読み込まれます -->
+                        <div class="text-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">読み込み中...</span>
+                            </div>
+                            <p class="text-muted mt-2">評価基準を読み込んでいます...</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 評価項目エリア -->
+            <section class="card mb-4">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h2 class="h5 mb-0">評価項目</h2>
+                    <span class="badge bg-secondary">5段階評価：1=非常に困難 2=支援が必要 3=普通 4=良好 5=非常に良好</span>
+                </div>
+                <div class="card-body">
+                    <!-- 評価項目を直接ここに表示 -->
+                    <div id="assessmentItems">
+                        <div class="text-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">読み込み中...</span>
+                            </div>
+                            <p class="text-muted mt-2">評価項目を読み込んでいます...</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ボタンエリア -->
+            <section class="text-center mb-4">
+                <button type="button" class="btn btn-primary btn-lg me-3" id="saveAssessment">
+                    <i class="bi bi-save me-2"></i>評価結果を保存
+                </button>
+                <button type="button" class="btn btn-warning btn-lg me-3" id="clearForm">
+                    <i class="bi bi-file-earmark-plus me-2"></i>新規評価を開始
+                </button>
+                <button type="button" class="btn btn-success btn-lg me-3" id="viewResults">
+                    <i class="bi bi-bar-chart me-2"></i>評価結果を見る
+                </button>
+                <button type="button" class="btn btn-info btn-lg me-3" id="viewChart">
+                    <i class="bi bi-bar-chart-fill me-2"></i>アセスメント結果
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-lg" id="exportCSV">
+                    <i class="bi bi-download me-2"></i>CSV出力
+                </button>
+            </section>
+
+            <!-- 過去の評価結果一覧 -->
+            <section class="card">
+                <div class="card-header bg-light">
+                    <h2 class="h5 mb-0">過去の評価結果</h2>
+                </div>
+                <div class="card-body">
+                    <div id="pastAssessments">
+                        <!-- 過去の評価結果はJavaScriptで動的に読み込まれます -->
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- スキル分析モーダル -->
+    <div class="modal fade" id="chartModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">アセスメント結果（カテゴリ別横向き棒グラフ）</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="chartContainer">
+                        <!-- カテゴリ別のグラフがここに動的に追加されます -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-primary" id="saveChartImage">
+                        <i class="bi bi-download me-2"></i>最初のカテゴリを保存
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 評価結果モーダル -->
+    <div class="modal fade" id="resultsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">評価結果詳細</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="resultsContent">
+                        <!-- 結果内容はJavaScriptで動的に生成されます -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-primary" id="printResults">
+                        <i class="bi bi-printer me-2"></i>印刷
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/assessment.js"></script>
+</body>
+</html>
